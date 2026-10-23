@@ -1,0 +1,44 @@
+# Sketch of how Musicus could ship: our server plus PostgreSQL.
+# Files stay on a volume; only metadata, users and annotations live in Postgres.
+services:
+  musicus:
+    image: musicus-server:0.1            # built for linux/amd64 and linux/arm64
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: musicus
+      DATABASE_NAME: musicus
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+      MUSICUS_BLOB_DIR: /var/lib/musicus/blobs
+    volumes:
+      - blobs:/var/lib/musicus/blobs
+    ports:
+      - "443:8443"                       # the database port is never published
+    secrets: [db_password]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine            # pin the major version: 16 -> 17 needs a dump/restore
+    environment:
+      POSTGRES_USER: musicus
+      POSTGRES_DB: musicus
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=30"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    secrets: [db_password]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U musicus -d musicus"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata: {}
+  blobs: {}
+
+secrets:
+  db_password:
+    file: ./db_password.txt

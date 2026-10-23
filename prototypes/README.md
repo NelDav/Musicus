@@ -14,6 +14,8 @@ the "Musicus – Conceptual Design" doc.
 | `musicus-proto` `argon_burst` | Login hashing must be bounded on small servers | `cargo run --release --bin argon_burst` |
 | `pdf-render` | hayro (pure-Rust PDF) renders fast enough | `cargo run --release -- file.pdf [page1.png]` |
 | `pdf-render/scripts/make_sheet.py` | Synthetic engraved + scanned test parts | `python3 make_sheet.py <out-dir>` (needs reportlab, Pillow) |
+| `pg-proto` | PostgreSQL variant: access check and burst over a pool | seed with `psql -f schema_pg.sql`, then `cargo run --release -- tcp 4` |
+| `pg-proto/docker-compose.example.yml` | Packaging sketch: server + PostgreSQL | `docker compose -f docker-compose.example.yml config` |
 | `pdf-render-wasm` | WASM size of hayro | `cargo build --release --target wasm32-unknown-unknown` |
 
 `pdf-render-wasm` is built without hayro's default features (no bundled fonts,
@@ -31,3 +33,16 @@ the "Musicus – Conceptual Design" doc.
 | Argon2id verify (m = 19 MiB, t = 2, p = 1) | 21 ms |
 | hayro, engraved / scanned A4 page at 180 dpi | 15 ms / 57 ms |
 | Annotation page, 30 strokes × 60 points | 61 KB JSON → 7 KB postcard + delta + zstd |
+
+## PostgreSQL variant (PostgreSQL 16 pinned to one core, sqlx pool)
+
+| Test | Result |
+| --- | --- |
+| Access check, 200 000 parts, sequential | 0.22 ms (TCP and Unix socket alike) |
+| 120 x (access check + file lookup) at once | max 26 ms (pool 4), 28-41 ms (pool 10) |
+| 120 simultaneous 8 KB annotation upserts | max 38 ms (pool 4), 60-90 ms (pool 10) |
+| PostgreSQL memory (PSS, all processes) | 28 MB idle, 67 MB (pool 4) / 78 MB (pool 10) under load |
+| Database size for the same library | 109 MB (SQLite: 47 MB), data directory with WAL 356 MB |
+
+`sqlx` and `rusqlite` cannot share a crate (both link the native sqlite3
+library), so the PostgreSQL benchmark lives in its own crate.
