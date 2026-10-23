@@ -1,0 +1,17 @@
+[package]
+name = "pdf-render-wasm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hayro = { version = "0.8.0", default-features = false }
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
