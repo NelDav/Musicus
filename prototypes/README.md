@@ -15,6 +15,7 @@ the "Musicus – Conceptual Design" doc.
 | `pdf-render` | hayro (pure-Rust PDF) renders fast enough | `cargo run --release -- file.pdf [page1.png]` |
 | `pdf-render/scripts/make_sheet.py` | Synthetic engraved + scanned test parts | `python3 make_sheet.py <out-dir>` (needs reportlab, Pillow) |
 | `pg-proto` | PostgreSQL variant: access check and burst over a pool | seed with `psql -f schema_pg.sql`, then `cargo run --release -- tcp 4` |
+| `musicus-proto` `scale_bench` + `pg-proto` `pg_scale` | Large library (2 M parts, 1 M annotation pages, ~9 GB) in SQLite vs PostgreSQL | `scale_bench <db-file> 20`; `psql -f scale_pg.sql`, then `pg_scale 20` (env `READERS` = 0..8) |
 | `pg-proto/docker-compose.example.yml` | Packaging sketch: server + PostgreSQL | `docker compose -f docker-compose.example.yml config` |
 | `pdf-render-wasm` | WASM size of hayro | `cargo build --release --target wasm32-unknown-unknown` |
 
@@ -46,3 +47,15 @@ the "Musicus – Conceptual Design" doc.
 
 `sqlx` and `rusqlite` cannot share a crate (both link the native sqlite3
 library), so the PostgreSQL benchmark lives in its own crate.
+
+## Large library: SQLite vs PostgreSQL (server and database on the same 2 cores)
+
+| Measure | SQLite | PostgreSQL 16 |
+| --- | --- | --- |
+| Size on disk | 9.3 GB | 9.5 GB + 1.1 GB WAL |
+| Load one 6 KB annotation page | 43 µs | 290 µs |
+| Access check, 2 000 000 parts | 37 µs | 366 µs |
+| Full-text search, 2 words | 0.7 ms | 1.3 ms |
+| 4 writers only: saves/s (p99) | 2 500-2 800 (22-31 ms) | 3 200-3 500 (3-4 ms) |
+| 8 readers + 4 writers: reads/s, saves/s (p99) | 21 400-21 800, 560-670 (63-85 ms) | 8 600-9 000, 1 700-1 800 (6 ms) |
+| Full online backup | 46 s (`VACUUM INTO`) | 45 s (`pg_dump -Z0`) |

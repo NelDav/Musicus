@@ -1,5 +1,11 @@
--- PostgreSQL variant of schema.sql, plus a synthetic seed of the
--- "large library" size (1 000 users, 200 000 parts). Prototype only.
+-- PostgreSQL variant of schema.sql, plus a synthetic seed. The default size is
+-- the "large library" (1 000 users, 200 000 parts); scale_pg.sql overrides the
+-- psql variables below. Prototype only.
+
+\if :{?users} \else \set users 1000 \endif
+\if :{?groups} \else \set groups 60 \endif
+\if :{?instruments} \else \set instruments 80 \endif
+\if :{?scores} \else \set scores 10000 \endif
 
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
@@ -62,20 +68,20 @@ CREATE TABLE annotation_pages (
 );
 
 SELECT setseed(0.42);
-INSERT INTO instruments SELECT i, 'Instrument ' || i, 'Family ' || (i % 5) FROM generate_series(0, 79) i;
-INSERT INTO groups SELECT g, 'Group ' || g FROM generate_series(0, 59) g;
+INSERT INTO instruments SELECT i, 'Instrument ' || i, 'Family ' || (i % 5) FROM generate_series(0, :instruments - 1) i;
+INSERT INTO groups SELECT g, 'Group ' || g FROM generate_series(0, :groups - 1) g;
 INSERT INTO group_instrument_grants
-    SELECT DISTINCT g, floor(random() * 80)::bigint FROM generate_series(0, 59) g, generate_series(1, 2) k;
-INSERT INTO users SELECT u, 'user' || u, 'user' || u, 'x', 'member' FROM generate_series(0, 999) u;
+    SELECT DISTINCT g, floor(random() * :instruments)::bigint FROM generate_series(0, :groups - 1) g, generate_series(1, 2) k;
+INSERT INTO users SELECT u, 'user' || u, 'user' || u, 'x', 'member' FROM generate_series(0, :users - 1) u;
 INSERT INTO group_members
-    SELECT DISTINCT floor(random() * 60)::bigint, u FROM generate_series(0, 999) u, generate_series(1, 2) k;
-INSERT INTO scores SELECT s, 'Score ' || s FROM generate_series(0, 9999) s;
-INSERT INTO files SELECT p, lpad(to_hex(p), 64, '0'), 'application/pdf', 3000000, 4 FROM generate_series(0, 199999) p;
-INSERT INTO parts SELECT p, p / 20, 'Part ' || (p % 20), p FROM generate_series(0, 199999) p;
+    SELECT DISTINCT floor(random() * :groups)::bigint, u FROM generate_series(0, :users - 1) u, generate_series(1, 2) k;
+INSERT INTO scores SELECT s, 'Score ' || s FROM generate_series(0, :scores - 1) s;
+INSERT INTO files SELECT p, lpad(to_hex(p), 64, '0'), 'application/pdf', 3000000, 4 FROM generate_series(0, :scores * 20 - 1) p;
+INSERT INTO parts SELECT p, p / 20, 'Part ' || (p % 20), p FROM generate_series(0, :scores * 20 - 1) p;
 INSERT INTO part_instruments
-    SELECT DISTINCT p, floor(random() * 80)::bigint FROM generate_series(0, 199999) p, generate_series(1, 2) k;
+    SELECT DISTINCT p, floor(random() * :instruments)::bigint FROM generate_series(0, :scores * 20 - 1) p, generate_series(1, 2) k;
 INSERT INTO group_score_grants
-    SELECT DISTINCT floor(random() * 60)::bigint, s FROM generate_series(0, 9999) s WHERE random() < 0.02;
+    SELECT DISTINCT floor(random() * :groups)::bigint, s FROM generate_series(0, :scores - 1) s WHERE random() < 0.02;
 -- Everyone may read part 0 (used by the concurrent test).
 INSERT INTO groups VALUES (1000, 'Everyone');
 INSERT INTO group_members SELECT 1000, id FROM users;
