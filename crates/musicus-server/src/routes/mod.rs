@@ -22,9 +22,17 @@ use tower_http::{
     trace::TraceLayer,
 };
 
+/// Liveness for load balancers and container health checks: the process
+/// answers and the database is readable. Needs no login.
+async fn health(axum::extract::State(app): axum::extract::State<AppState>) -> crate::error::ApiResult<&'static str> {
+    sqlx::query("SELECT 1").execute(&app.db.read).await?;
+    Ok("ok")
+}
+
 pub fn api() -> Router<AppState> {
     Router::new()
         // Authentication and the user's own account
+        .route("/health", get(health))
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/me", get(auth::me))
@@ -75,7 +83,9 @@ pub fn app(state: AppState, web_dir: Option<&Path>) -> Router {
     let mut router = Router::new().nest("/api", api());
     if let Some(dir) = web_dir {
         // Unknown paths are client-side routes of the single-page app.
-        let spa = ServeDir::new(dir).fallback(ServeFile::new(dir.join("index.html")));
+        // `dx bundle --release` writes .br/.gz copies next to the assets.
+        let spa =
+            ServeDir::new(dir).precompressed_br().precompressed_gzip().fallback(ServeFile::new(dir.join("index.html")));
         router = router.fallback_service(spa);
     }
     router

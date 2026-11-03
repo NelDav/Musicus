@@ -1,0 +1,61 @@
+# Musicus with SQLite: one container, all data in one volume.
+#
+#   cp .env.example .env              # adjust, then:
+#   docker compose up -d --build      # http://localhost:8080
+#   docker compose logs musicus       # shows the one-time admin setup link
+#
+# With HTTPS (needed for phones and tablets on the network; see README):
+#   set MUSICUS_DOMAIN and MUSICUS_PUBLIC_URL in .env, then
+#   docker compose --profile https up -d --build
+#
+# Backup while running (database first, then the immutable files):
+#   docker compose exec musicus musicus-server backup --to /data/backup.sqlite
+
+name: musicus
+
+services:
+  musicus:
+    build: .
+    image: musicus:latest
+    restart: unless-stopped
+    environment:
+      MUSICUS_PUBLIC_URL: ${MUSICUS_PUBLIC_URL:-http://localhost:8080}
+      MUSICUS_CLIENT_CACHE: ${MUSICUS_CLIENT_CACHE:-none}
+      MUSICUS_RAM_CACHE_MB: ${MUSICUS_RAM_CACHE_MB:-128}
+      MUSICUS_MAX_UPLOAD_MB: ${MUSICUS_MAX_UPLOAD_MB:-200}
+      MUSICUS_SESSION_DAYS: ${MUSICUS_SESSION_DAYS:-60}
+      MUSICUS_INSECURE_COOKIES: ${MUSICUS_INSECURE_COOKIES:-false}
+      MUSICUS_TRUST_PROXY: ${MUSICUS_TRUST_PROXY:-false}
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      # Behind the https profile, bind this to 127.0.0.1 (MUSICUS_BIND) so
+      # nobody bypasses the proxy.
+      - "${MUSICUS_BIND:-0.0.0.0}:${MUSICUS_PORT:-8080}:8080"
+    volumes:
+      - musicus-data:/data
+    # The server finishes running requests on SIGTERM.
+    stop_grace_period: 15s
+
+  # Optional TLS termination with automatic Let's Encrypt certificates.
+  caddy:
+    image: caddy:2.10-alpine
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      MUSICUS_DOMAIN: ${MUSICUS_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      musicus:
+        condition: service_healthy
+
+volumes:
+  musicus-data:
+  caddy-data:
+  caddy-config:

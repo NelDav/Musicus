@@ -40,7 +40,24 @@ async fn main() -> Result<()> {
             );
             Ok(())
         }
+        Command::Healthcheck { listen } => healthcheck(listen),
     }
+}
+
+/// A minimal HTTP/1.0 request, so the runtime image needs no curl or shell.
+fn healthcheck(listen: SocketAddr) -> Result<()> {
+    use std::io::{Read, Write};
+    use std::time::Duration;
+    let mut target = listen;
+    if target.ip().is_unspecified() {
+        target.set_ip(std::net::Ipv4Addr::LOCALHOST.into());
+    }
+    let mut stream = std::net::TcpStream::connect_timeout(&target, Duration::from_secs(3))?;
+    stream.set_read_timeout(Some(Duration::from_secs(3)))?;
+    stream.write_all(b"GET /api/health HTTP/1.0\r\nHost: localhost\r\n\r\n")?;
+    let mut head = [0u8; 12];
+    stream.read_exact(&mut head)?;
+    if head.ends_with(b" 200") { Ok(()) } else { Err(format!("unhealthy: {}", String::from_utf8_lossy(&head)).into()) }
 }
 
 async fn serve(args: ServeArgs) -> Result<()> {

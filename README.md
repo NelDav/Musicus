@@ -52,7 +52,35 @@ For development, `dx build --platform web --package musicus-web` builds a
 debug client into `target/dx/musicus-web/debug/web/public`. Release builds
 run `wasm-opt`, which `dx` downloads on first use.
 
-## Configuration
+## Docker
+
+The `Dockerfile` builds the web client and the server and puts them into a
+small image based on distroless (no shell, runs as an unprivileged user,
+data in the volume `/data`). `compose.yaml` runs it:
+
+```sh
+cp .env.example .env                  # optional: adjust settings
+docker compose up -d --build
+docker compose logs musicus           # the one-time admin setup link
+```
+
+The web client is then on http://localhost:8080. Tablets and phones on the
+network need HTTPS (see below). With a domain that points to the machine,
+set `MUSICUS_DOMAIN`, `MUSICUS_PUBLIC_URL`, `MUSICUS_BIND=127.0.0.1` and
+`MUSICUS_TRUST_PROXY=true` in `.env`, then start with Caddy in front. Caddy
+fetches and renews the Let's Encrypt certificate itself:
+
+```sh
+docker compose --profile https up -d --build
+```
+
+Backups while running: `docker compose exec musicus musicus-server backup --to
+/data/backup-$(date +%F).sqlite`, then copy the volume's `blobs/` directory.
+The image has a health check (`musicus-server healthcheck`, which calls
+`GET /api/health`). For a Raspberry Pi, build on the Pi or use
+`docker buildx build --platform linux/arm64`. The first build takes a while,
+because it compiles the Dioxus CLI.
+
 
 All options can be passed as flags or environment variables
 (`musicus-server serve --help`).
@@ -127,6 +155,7 @@ All endpoints are under `/api`; the JSON bodies are defined in
 | Groups | `GET/POST groups`, `PUT/DELETE groups/{id}`, `PUT groups/{id}/members`, `PUT groups/{id}/instrument-grants`, `PUT groups/{id}/score-grants` |
 | Library | `GET scores?q=&genre=&tag=`, `POST scores`, `GET/PUT/DELETE scores/{id}`, `POST scores/{id}/parts`, `GET/PUT/DELETE parts/{id}`, `PUT parts/{id}/file` (raw PDF body), `GET parts/{id}/versions` |
 | Files | `GET files/{sha256}`, `GET files/{sha256}/thumbnail` |
+| Health | `GET health` (no login; checks the database) |
 | Programmes | `GET/POST programmes`, `GET/PUT/DELETE programmes/{id}`, `PUT programmes/{id}/items` |
 | Annotations | `GET/POST parts/{id}/annotation-sets`, `PATCH/DELETE annotation-sets/{id}`, `POST annotation-sets/{id}/migrate`, `GET/PUT annotation-sets/{id}/pages/{page}` (binary, `If-Match`) |
 
@@ -163,8 +192,7 @@ Not yet implemented (in the concept, marked optional or later):
 - shared (read-only) annotation sets for a section, a "conductor push" of the next piece, half-page turns;
 - per-user encryption of annotations at rest;
 - MusicXML, and the offline app with encrypted local storage
-  (the hash-addressed files and per-page revisions are already in place for it);
-- a container image / docker-compose file.
+  (the hash-addressed files and per-page revisions are already in place for it).
 
 Deviations from the concept:
 

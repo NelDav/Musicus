@@ -1,0 +1,10 @@
+# Keep the build context small; everything here is rebuilt or not needed.
+.git
+target
+data
+dist
+prototypes
+e2e
+**/node_modules
+crates/musicus-web/public/vendor
+.env

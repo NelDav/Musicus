@@ -1,0 +1,17 @@
+# TLS in front of Musicus (compose profile "https"). Caddy obtains and renews
+# the certificate for MUSICUS_DOMAIN automatically; the domain must point to
+# this machine and ports 80/443 must be reachable for the ACME challenge.
+{$MUSICUS_DOMAIN} {
+	# Compress the client (wasm, js, css, json); PDFs are compressed already.
+	encode {
+		zstd
+		gzip
+		match {
+			header Content-Type text/*
+			header Content-Type application/javascript*
+			header Content-Type application/wasm
+			header Content-Type application/json*
+		}
+	}
+	reverse_proxy musicus:8080
+}

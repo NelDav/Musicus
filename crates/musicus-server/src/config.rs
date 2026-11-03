@@ -35,6 +35,12 @@ pub enum Command {
         #[arg(long)]
         to: PathBuf,
     },
+    /// Exit 0 if the server on this machine answers `/api/health` (for
+    /// container health checks; plain HTTP only).
+    Healthcheck {
+        #[arg(long, env = "MUSICUS_LISTEN", default_value = "0.0.0.0:8080")]
+        listen: SocketAddr,
+    },
 }
 
 #[derive(Args, Debug, Clone)]

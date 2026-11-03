@@ -249,6 +249,8 @@ async fn library(s: &Server) -> Library {
 #[tokio::test]
 async fn login_sessions_and_csrf() {
     let s = Server::start().await;
+    let health = s.send(Method::GET, "/api/health", Auth::None, &[], Body::empty()).await;
+    assert_eq!((health.status, health.body.as_slice()), (StatusCode::OK, b"ok".as_slice()));
     let cookie = s.accept_invite(&s.admin_invite, "admin-password-1").await;
     // The invite is single-use.
     let again =
