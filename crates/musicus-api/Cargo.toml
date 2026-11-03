@@ -1,0 +1,14 @@
+[package]
+name = "musicus-api"
+description = "Types shared by the Musicus server and its clients: JSON request/response bodies and the annotation (ink) format."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+postcard.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
