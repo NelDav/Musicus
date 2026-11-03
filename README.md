@@ -81,6 +81,11 @@ The image has a health check (`musicus-server healthcheck`, which calls
 `docker buildx build --platform linux/arm64`. The first build takes a while,
 because it compiles the Dioxus CLI.
 
+The build downloads `dx`'s helper tools (wasm-bindgen, wasm-opt, esbuild).
+Where that is not possible (offline or behind a TLS-intercepting proxy),
+use a base image with those three on `PATH` and `NO_DOWNLOADS=1` set, and
+pass it as `--build-arg RUST_IMAGE=<image>`.
+
 
 All options can be passed as flags or environment variables
 (`musicus-server serve --help`).
