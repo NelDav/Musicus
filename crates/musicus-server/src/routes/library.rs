@@ -328,6 +328,10 @@ async fn one_part(app: &App, user: &AuthUser, id: Id) -> ApiResult<Json<Part>> {
     visible_parts(app, user, None, Some(id)).await?.pop().map(Json).ok_or(AppError::NotFound)
 }
 
+pub async fn get_part(State(app): State<AppState>, user: AuthUser, Path(id): Path<Id>) -> ApiResult<Json<Part>> {
+    one_part(&app, &user, id).await
+}
+
 pub async fn create_part(
     State(app): State<AppState>,
     user: AuthUser,

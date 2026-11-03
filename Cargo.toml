@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/musicus-api", "crates/musicus-server"]
+members = ["crates/musicus-api", "crates/musicus-server", "crates/musicus-web"]
 # The web client only builds for wasm32 (via `dx`), so plain `cargo build`
 # and `cargo test` cover the shared types and the server.
 default-members = ["crates/musicus-api", "crates/musicus-server"]

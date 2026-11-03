@@ -26,3 +26,5 @@ rustc-ice-*.txt
 # Musicus runtime data and web build output
 /data/
 /dist/
+# Fetched by scripts/fetch-pdfjs.sh
+/crates/musicus-web/public/vendor/

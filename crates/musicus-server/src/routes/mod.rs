@@ -48,7 +48,7 @@ pub fn api() -> Router<AppState> {
         .route("/scores", get(library::list_scores).post(library::create_score))
         .route("/scores/{id}", get(library::get_score).put(library::update_score).delete(library::delete_score))
         .route("/scores/{id}/parts", post(library::create_part))
-        .route("/parts/{id}", put(library::update_part).delete(library::delete_part))
+        .route("/parts/{id}", get(library::get_part).put(library::update_part).delete(library::delete_part))
         .route("/parts/{id}/file", put(library::upload_file).layer(DefaultBodyLimit::disable()))
         .route("/parts/{id}/versions", get(library::list_versions))
         .route("/files/{sha256}", get(files::get_file))

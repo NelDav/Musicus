@@ -393,7 +393,8 @@ async fn annotations_are_private_versioned_and_conflict_checked() {
         async move { s.send(Method::PUT, &uri, Auth::Bearer(&token), &[("if-match", rev)], Body::from(body)).await }
     };
 
-    assert_eq!(s.get(&page(0), &lib.anna).await.status, StatusCode::NOT_FOUND);
+    let empty = s.get(&page(0), &lib.anna).await;
+    assert_eq!((empty.status, empty.headers[header::ETAG].to_str().unwrap()), (StatusCode::NO_CONTENT, "\"0\""));
     assert_eq!(
         s.send(Method::PUT, &page(0), Auth::Bearer(&lib.anna), &[], Body::from(layer(&[1]))).await.status,
         StatusCode::PRECONDITION_REQUIRED

@@ -275,20 +275,25 @@ fn revision_etag(revision: i64) -> HeaderValue {
 }
 
 /// The stored layer as `application/octet-stream` (see [`musicus_api::ink`]),
-/// with `ETag: "<revision>"`. 404 if the page was never saved.
+/// with `ETag: "<revision>"`. A page never saved answers 204 with
+/// `ETag: "0"`, the revision to send in the first `If-Match`.
 pub async fn get_page(
     State(app): State<AppState>,
     user: AuthUser,
     Path((set_id, page)): Path<(Id, i64)>,
 ) -> ApiResult<Response> {
     own_set(&app, &user, set_id).await?;
-    let (revision, data): (i64, Vec<u8>) =
+    let row: Option<(i64, Vec<u8>)> =
         sqlx::query_as("SELECT revision, data FROM annotation_pages WHERE set_id = ?1 AND page = ?2")
             .bind(set_id)
             .bind(page)
             .fetch_optional(&app.db.read)
-            .await?
-            .ok_or(AppError::NotFound)?;
+            .await?;
+    let Some((revision, data)) = row else {
+        let mut response = StatusCode::NO_CONTENT.into_response();
+        response.headers_mut().insert(header::ETAG, revision_etag(0));
+        return Ok(response);
+    };
     let layer = zstd::decode_all(data.as_slice()).map_err(AppError::internal)?;
     let mut response = layer.into_response();
     let headers = response.headers_mut();
